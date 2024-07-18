@@ -14,7 +14,7 @@ class FeatureExtraction:
     @classmethod
     def remove_useless_column(cls,df):
         """
-        Removes the columns that are not important for the prediction
+        Removes the columns that are not important for the prediction.
         NOTE: Must be used only after extract_brand.
         """
         df.drop(columns=['Name'], inplace=True)

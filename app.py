@@ -33,5 +33,4 @@ def bulk_predictor():
         headers=headers
     )
 if __name__ == '__main__':
-    print()
     app.run(debug=True)

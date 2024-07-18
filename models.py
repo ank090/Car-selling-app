@@ -21,3 +21,4 @@ class Models:
             self.encoder = joblib.load(f)
         with open("static/model.pkl", "rb") as f:
             self.regression_model = joblib.load(f)
+            
