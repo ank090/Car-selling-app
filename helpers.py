@@ -17,8 +17,9 @@ class FeatureExtraction:
         Removes the columns that are not important for the prediction.
         NOTE: Must be used only after extract_brand.
         """
+        if 'Unnamed: 0' in df.columns:
+            df.drop(columns=['Unnamed: 0'], inplace=True)
         df.drop(columns=['Name'], inplace=True)
-        df.drop(columns=['Unnamed: 0'], inplace=True)
         df.drop(columns=['New_Price'], inplace=True)
         return df
     
@@ -75,9 +76,24 @@ class Features:
         self.extractor = FeatureExtraction()
     
     def extract_bulk(self, df):
+        """
+        Extract all the relavent data from dataset and prepare it to feed to the models.
+        """
         df = self.extractor.remove_units(df)
         df = self.extractor.change_data_to_numeric(df)        
         df = self.extractor.handle_null_values(df)
+        df = self.extractor.extract_brand(df)
+        df = self.extractor.remove_useless_column(df)
+        df = self.extractor.map_nuumeric_owner(df)
+        #print(df.columns)
+        return df
+    
+    def extract(self,df):
+        """
+        Extracts all the relavent data from request and prepare it to be fed to the models.
+        """
+        df = self.extractor.remove_units(df)
+        df = self.extractor.change_data_to_numeric(df)
         df = self.extractor.extract_brand(df)
         df = self.extractor.remove_useless_column(df)
         df = self.extractor.map_nuumeric_owner(df)
@@ -87,11 +103,44 @@ class Prediction:
     def __init__(self) -> None:
         self.models = Models()
         self.extractor = Features()
-        
-    def make_bulk_prediction(self, data):
-        engineered_data = self.extractor.extract_bulk(data)
-        engineered_data = self.models.encoder.transform(engineered_data)
+    
+    def encode_predict(self,data):
+        """
+        Handles encoding and predicting the price based on the encoded values.
+        """
+        engineered_data = self.models.encoder.transform(data)
         pred = self.models.regression_model.predict(engineered_data)*100000 # to convert price in Lakh
         pred = list(map(lambda x:round(x), pred))
         prediction = pd.DataFrame(pred, columns=['Predicted Price'])
+        return prediction
+
+    def input_validator(func):
+        """
+        Handles validation of input parameters against parameters need by the models.
+        """
+        cols = {'Name', 'Location', 'Year', 'Kilometers_Driven',
+       'Fuel_Type', 'Transmission', 'Owner_Type', 'Mileage', 'Engine', 'Power',
+       'Seats', 'New_Price'}
+        def check(*args):
+            if not set(cols).issubset(set(args[1].columns)):
+                diff = cols.difference(set(args[1].columns))
+                raise KeyError("Columns",diff,"needed for model, are not present in the data passed.")
+            return func(*args)
+        return check
+    
+    @input_validator    
+    def make_bulk_prediction(self, data):
+        """
+        Handles extraction of data and making prediction for bulk dataset.
+        """
+        engineered_data = self.extractor.extract_bulk(data)
+        prediction = self.encode_predict(data=engineered_data)
+        return prediction
+    @input_validator
+    def make_prediction(self, data):
+        """
+        Handles extraction of data and making prediction for a single dataset.
+        """
+        engineered_data = self.extractor.extract(data)
+        prediction = self.encode_predict(data=engineered_data)
         return prediction
